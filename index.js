@@ -11,7 +11,7 @@ const app = express();
 const port = process.env.PORT || 3001 ;
 
 app.use(cors({
-    origin: `https://philsca-doc-tracker.vercel.app/`,
+    origin: `https://philsca-doc-tracker.vercel.app`,
     methods: ['GET', 'POST', 'PUT', 'PATCH' ,'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }));
