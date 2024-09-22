@@ -1,89 +1,96 @@
-const asyncHandler = require('express-async-handler');
-const Document = require('../model/documentModel');
-const path = require('path');
+// Import required modules
+const asyncHandler = require('express-async-handler'); // Handles async/await errors
+const Document = require('../model/documentModel'); // Import the Document model
+const path = require('path'); // Node.js module for handling file paths
+const fs = require('fs'); // Node.js module for file system operations
 
+// Define the path for the uploads directory
+const uploadsPath = path.join(__dirname, '../uploads/');
+
+// Function to get all documents for admin or user's documents based on their role
 const getDocuments = asyncHandler(async (req, res) => {
-    console.log('User:', req.user); 
-    if(req.user.role === 'admin'){
-        const documents = await Document.find()
-        res.status(200).json(documents);
-    }else{
-        const documents = await Document.find({createdBy: req.user.id})
-        res.status(200).json(documents);
+    console.log('User:', req.user); // Log the current user's info (useful for debugging)
+
+    // If the user is an admin, fetch all documents
+    if (req.user.role === 'admin') {
+        const documents = await Document.find(); // Get all documents
+        res.status(200).json(documents); // Return documents in response
+    } else {
+        // If the user is not an admin, fetch only documents created by this user
+        const documents = await Document.find({ createdBy: req.user.id });
+        res.status(200).json(documents); // Return user's documents
     }
-})
+});
 
-
-
-
+// Function to get a specific document by ID
 const getDocument = asyncHandler(async (req, res) => {
-    const { id } = req.params; // Extract the ID from URL parameters
+    const { id } = req.params; // Extract the document ID from URL parameters
 
     if (req.user.role === 'admin') {
-  
-        const document = await getDocumentById(id);
+        // Admin can access any document
+        const document = await getDocumentById(id); // Get document by ID
         if (!document) {
-            res.status(404).json({ message: 'Document not found' });
+            res.status(404).json({ message: 'Document not found' }); // Document not found
             return;
         }
-     
-    res.json(document);
+        res.json(document); // Send document in response
     } else {
-        // Regular users can only find documents they created
+        // Regular users can only access their own documents
         const documents = await Document.find({ createdBy: req.user.id });
         if (documents.length === 0) {
             res.status(404).json({ message: 'No documents found for this user' });
             return;
         }
-        // Check if the specific document exists in the user's documents
+        // Check if the requested document belongs to the user
         const document = documents.find(doc => doc._id.toString() === id);
         if (!document) {
             res.status(404).json({ message: 'Document not found for this user' });
             return;
         }
-        res.status(200).json(document);
+        res.status(200).json(document); // Return the user's document
     }
 });
 
-
+// Helper function to get a document by its ID and map file paths to URLs
 async function getDocumentById(id) {
     try {
-      const document = await Document.findById(id).exec();
-      if (!document) {
-        throw new Error('Document not found');
-      }
-  
-      // Map file paths to URLs served by Express (assuming files are served from /uploads)
-      const files = document.files.map(file => ({
-        ...file,
-        filePath: `/uploads/${path.basename(file.filePath)}`
-      }));
-  
-      return {
-        ...document.toObject(),
-        files
-      };
-    } catch (error) {
-      console.error('Error fetching document:', error);
-      throw error;
-    }
-  }
+        const document = await Document.findById(id).exec(); // Fetch document by ID
+        if (!document) {
+            throw new Error('Document not found');
+        }
 
+        // Map file paths to URLs (assuming files are served from the /uploads directory)
+        const files = document.files.map(file => ({
+            ...file,
+            filePath: `/uploads/${path.basename(file.filePath)}` // Serve file from /uploads
+        }));
+
+        return {
+            ...document.toObject(),
+            files // Return document with updated file paths
+        };
+    } catch (error) {
+        console.error('Error fetching document:', error); // Log errors
+        throw error;
+    }
+}
+
+// Function to update an existing document
 const updateDocument = asyncHandler(async (req, res) => {
-    // Retrieve the document by ID
+    // Fetch the document by ID
     const document = await Document.findById(req.params.id);
     if (!document) {
         res.status(404);
         throw new Error('Document not found');
     }
 
-    // Check user permissions (change this later for admin privileges)
+    // Check if the user has permission to update the document
     if (req.user.role !== 'admin' && document.createdBy.toString() !== req.user.id) {
         res.status(403);
         throw new Error('User does not have permission to update this document');
     }
 
-    // Prepare status history update if status is being changed
+    // Prepare status history update if the document's status is being changed
     let updateData = req.body;
     if (req.body.status && req.body.status !== document.status) {
         updateData = {
@@ -91,97 +98,108 @@ const updateDocument = asyncHandler(async (req, res) => {
             $push: {
                 statusHistory: {
                     status: req.body.status,
-                    updatedBy: req.user.id,
-                    timestamp: new Date()
+                    updatedBy: req.user.id, // Track who updated the status
+                    timestamp: new Date() // Add a timestamp
                 }
             }
         };
     }
 
-    // Update the document with new data
+    // Update the document in the database
     const updatedDocument = await Document.findByIdAndUpdate(
         req.params.id,
         updateData,
-        { new: true, runValidators: true } // Ensure that validators are run
+        { new: true, runValidators: true } // Return the updated document and run validation
     );
 
-    // Send response with updated document
+    // Respond with the updated document
     res.status(200).json(updatedDocument);
 });
 
+// Function to create a new document
 const createDocument = async (req, res) => {
     try {
-      // Destructure fields from request body
-      const { filename, purpose, schoolName, lastAttended, course, major, copies } = req.body;
-  
-      // Validate required fields
-      if (!filename || !purpose || !schoolName || !lastAttended || !course || !major || !copies) {
-        return res.status(400).json({ message: 'All required fields must be provided' });
-      }
-  
-      // Ensure files were uploaded
-      if (!req.files) {
-        return res.status(400).json({ message: 'No files were uploaded' });
-      }
-  
-      // Check the number of files and validate
-      const files = req.files.map(file => ({
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
-        filePath: file.path,
-      }));
-  
-      if (files.length < 1 || files.length > 3) {
-        return res.status(400).json({ message: 'You must upload between 1 and 3 files' });
-      }
-  
-      // Create a new document instance
-      const document = await Document.create({
-        filename,
-        purpose,
-        createdBy: req.user.id, // Assuming req.user.id is set by authentication middleware
-        schoolName,
-        course,
-        major,
-        lastAttended,
-        copies,
-        files, // Save all files under a single property
-      });
-  
-      // Respond with success
-      res.status(201).json(document);
+        // Extract fields from the request body
+        const { filename, purpose, schoolName, lastAttended, course, major, copies } = req.body;
+
+        // Check if all required fields are provided
+        if (!filename || !purpose || !schoolName || !lastAttended || !course || !major || !copies) {
+            return res.status(400).json({ message: 'All required fields must be provided' });
+        }
+
+        // Ensure files are uploaded
+        if (!req.files) {
+            return res.status(400).json({ message: 'No files were uploaded' });
+        }
+
+        // Validate the number of files
+        const files = req.files.map(file => ({
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size,
+            filePath: file.path, // Save file path for future retrieval
+        }));
+
+        if (files.length < 1 || files.length > 3) {
+            return res.status(400).json({ message: 'You must upload between 1 and 3 files' });
+        }
+
+        // Create a new document in the database
+        const document = await Document.create({
+            filename,
+            purpose,
+            createdBy: req.user.id, // Link the document to the current user
+            schoolName,
+            course,
+            major,
+            lastAttended,
+            copies,
+            files, // Save all file information
+        });
+
+        // Respond with the created document
+        res.status(201).json(document);
     } catch (error) {
-      console.error('Error creating document:', error);
-      res.status(500).json({ message: 'An error occurred while creating the document' });
+        console.error('Error creating document:', error); // Log errors
+        res.status(500).json({ message: 'An error occurred while creating the document' });
     }
-  };
+};
 
-
-  const viewDocument = async (req, res) => {
+// Function to view a document by its tracking number
+const viewDocument = async (req, res) => {
     try {
-      // Extract tracking number from request parameters
-      const trackingNumber = req.params.trackingNumber;
-  
-      // Validate input
-      if (!trackingNumber) {
-        return res.status(400).json({ error: 'Tracking number is required' });
-      }
-  
-      // Fetch document status from MongoDB
-      const document = await Document.findOne({ trackingNumber });
-  
-      // Send response
-      if (document) {
-        return res.status(200).json({ trackingNumber: document.trackingNumber, filename:document.filename, status: document.status });
-      } else {
-        return res.status(404).json({ error: 'Document not found' });
-      }
+        const trackingNumber = req.params.trackingNumber; // Extract tracking number from request
+
+        if (!trackingNumber) {
+            return res.status(400).json({ error: 'Tracking number is required' });
+        }
+
+        // Find the document by tracking number
+        const document = await Document.findOne({ trackingNumber });
+
+        if (document) {
+            // Return document details and status
+            return res.status(200).json({ trackingNumber: document.trackingNumber, filename: document.filename, status: document.status });
+        } else {
+            return res.status(404).json({ error: 'Document not found' });
+        }
     } catch (error) {
-      // Handle unexpected errors
-      console.error(error);
-      return res.status(500).json({ error: 'Internal server error' });
+        console.error(error); // Log unexpected errors
+        return res.status(500).json({ error: 'Internal server error' });
     }
-  };
-  
-module.exports = { updateDocument, getDocument, getDocuments, createDocument ,viewDocument}
+};
+
+// Function to view uploaded images
+const viewImage = async (req, res) => {
+    fs.readdir(uploadsPath, (err, files) => {
+        if (err) {
+            return res.status(500).json({ error: 'Unable to read directory' });
+        }
+
+        // Respond with a list of file names
+        res.json(files);
+    });
+};
+
+// Export the functions to be used in other parts of the application
+module.exports = { updateDocument, getDocument, getDocuments, createDocument, viewDocument, viewImage };

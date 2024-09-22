@@ -2,15 +2,16 @@ const express = require('express');
 
 
 
-const  { viewDocument } = require('../controllers/documentController');
-
-
+const  { viewDocument, viewImage } = require('../controllers/documentController');
 
 
 
 const router = express.Router();
 
-router.get('/:trackingNumber',viewDocument);          
+
+router.get('/image', viewImage);     
+router.get('/:trackingNumber',viewDocument);    
+ 
 
 
 module.exports = router;
