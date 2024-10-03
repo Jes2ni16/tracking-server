@@ -14,12 +14,18 @@ const app = express(); // Initialize the Express application
 // Set the port from the environment variable or default to 3001
 const port = process.env.PORT || 3001;
 
-// Enable Cross-Origin Resource Sharing (CORS)
-// This allows the frontend (at the specified URL) to communicate with this server
+
+const allowedOrigins = ['https://philsca-doc-tracker.vercel.app', 'http://philcatracker.com/'];// URL of the frontend application
+
 app.use(cors({
-    origin: `https://philsca-doc-tracker.vercel.app`, // URL of the frontend application
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], // Allowed HTTP methods
-    allowedHeaders: ['Content-Type', 'Authorization'] // Allowed headers in requests
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] 
 }));
 
 // Serve static files from the 'uploads' directory
