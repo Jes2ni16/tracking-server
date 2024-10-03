@@ -15,7 +15,7 @@ const app = express(); // Initialize the Express application
 const port = process.env.PORT || 3001;
 
 
-const allowedOrigins = ['https://philsca-doc-tracker.vercel.app', 'http://philcatracker.com/'];// URL of the frontend application
+const allowedOrigins = ['https://philsca-doc-tracker.vercel.app', 'http://philcatracker.com','https://philcatracker.com'];// URL of the frontend application
 
 app.use(cors({
   origin: function (origin, callback) {
