@@ -206,7 +206,7 @@ const deleteDocument = async (req, res) => {
   
     try {
       // Ensure the ID exists
-      const deletedItem = await ItemModel.findByIdAndDelete(id);
+      const deletedItem = await Document.findByIdAndDelete(id);
   
       if (!deletedItem) {
         return res.status(404).json({ message: "Item not found." });
