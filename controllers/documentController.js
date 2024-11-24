@@ -201,5 +201,23 @@ const viewImage = async (req, res) => {
     });
 };
 
+const deleteDocument = async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      // Ensure the ID exists
+      const deletedItem = await ItemModel.findByIdAndDelete(id);
+  
+      if (!deletedItem) {
+        return res.status(404).json({ message: "Item not found." });
+      }
+  
+      res.status(200).json({ message: "Item deleted successfully." });
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  };
+
 // Export the functions to be used in other parts of the application
-module.exports = { updateDocument, getDocument, getDocuments, createDocument, viewDocument, viewImage };
+module.exports = { updateDocument, getDocument, getDocuments, createDocument, viewDocument, viewImage , deleteDocument};
