@@ -18,25 +18,13 @@ const documentSchema = mongoose.Schema({
         type: String,
         required: [true, "Please provide a name"] // Required field with custom error message
     },
-    // Field for storing the name of the school
-    schoolName: {
-        type: String,
-        required: [true, "Please provide a school name"] // Required field with custom error message
-    },
+  
     // Field for storing the course associated with the document
     course: {
         type: String,
         required: [true, "Please provide a course"] // Required field with custom error message
     },
-    // Field for storing the major, if applicable
-    major: {
-        type: String
-    },
-    // Field for storing the last attended date
-    lastAttended: {
-        type: String,
-        required: [true, 'Please provide a date'] // Required field with custom error message
-    },
+
     // Field for storing the number of copies, default is '1'
     copies: {
         type: String,
