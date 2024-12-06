@@ -212,7 +212,7 @@ const viewDocument = async (req, res) => {
 
         if (document) {
             // Return document details and status
-            return res.status(200).json({ trackingNumber: document.trackingNumber, filename: document.filename, status: document.status });
+            return res.status(200).json({ trackingNumber: document.trackingNumber, filename: document.filename, status: document.status, releaseDate: document.releaseDate });
         } else {
             return res.status(404).json({ error: 'Document not found' });
         }
