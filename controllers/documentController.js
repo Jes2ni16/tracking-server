@@ -76,64 +76,80 @@ async function getDocumentById(id) {
 }
 
 // Function to update an existing document
-const updateDocument = asyncHandler(async (req, res) => {
-    // Fetch the document by ID
-    const document = await Document.findById(req.params.id);
-    if (!document) {
-        res.status(404);
-        throw new Error('Document not found');
+const getNextMonday = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    
+    if (dayOfWeek === 5) {
+      today.setDate(today.getDate() + 3); 
+    } else {
+      today.setDate(today.getDate());
     }
-
-    if (req.user.role !== 'admin' && document.createdBy.toString() !== req.user.id) {
-        res.status(403);
-        throw new Error('User does not have permission to update this document');
-    }
-
-    let updateData = req.body;
-
-    if (req.body.status && req.body.status !== document.status) {
-        if (req.body.status === 'realasing') {
-            updateData = {
-                ...req.body,
-                releaseDate: new Date().toISOString().split('T')[0], // Set the release date to the current date (YYYY-MM-DD)
-                $push: {
-                    statusHistory: {
-                        status: req.body.status,
-                        updatedBy: req.user.id, // Track who updated the status
-                        timestamp: new Date() // Add a timestamp
-                    }
-                }
-            };
-        } else {
-            // Otherwise, update the status without setting a release date
-            updateData = {
-                ...req.body,
-                $push: {
-                    statusHistory: {
-                        status: req.body.status,
-                        updatedBy: req.user.id, // Track who updated the status
-                        timestamp: new Date() // Add a timestamp
-                    }
-                }
-            };
-        }
-    }
-
-    // Update the document in the database
-    const updatedDocument = await Document.findByIdAndUpdate(
-        req.params.id,
-        updateData,
-        { new: true, runValidators: true } // Return the updated document and run validation
-    );
-
-    if (!updatedDocument) {
-        res.status(404);
-        throw new Error('Document not found');
-    }
-
-    // Respond with the updated document
-    res.status(200).json(updatedDocument);
-});
+  
+    return today.toISOString().split('T')[0];
+  };
+  
+  const updateDocument = asyncHandler(async (req, res) => {
+      // Fetch the document by ID
+      const document = await Document.findById(req.params.id);
+      if (!document) {
+          res.status(404);
+          throw new Error('Document not found');
+      }
+  
+      // Check if the user has permission to update the document
+      if (req.user.role !== 'admin' && document.createdBy.toString() !== req.user.id) {
+          res.status(403);
+          throw new Error('User does not have permission to update this document');
+      }
+  
+      let updateData = req.body;
+  
+      if (req.body.status && req.body.status !== document.status) {
+          if (req.body.status === 'to be released') {
+              const releaseDate = getNextMonday(); 
+              updateData = {
+                  ...req.body,
+                  releaseDate: releaseDate, 
+                  $push: {
+                      statusHistory: {
+                          status: req.body.status,
+                          updatedBy: req.user.id, // Track who updated the status
+                          timestamp: new Date() // Add a timestamp
+                      }
+                  }
+              };
+          } else {
+   
+              updateData = {
+                  ...req.body,
+                  $push: {
+                      statusHistory: {
+                          status: req.body.status,
+                          updatedBy: req.user.id, // Track who updated the status
+                          timestamp: new Date() // Add a timestamp
+                      }
+                  }
+              };
+          }
+      }
+  
+      // Update the document in the database
+      const updatedDocument = await Document.findByIdAndUpdate(
+          req.params.id,
+          updateData,
+          { new: true, runValidators: true } // Return the updated document and run validation
+      );
+  
+      if (!updatedDocument) {
+          res.status(404);
+          throw new Error('Document not found');
+      }
+  
+      // Respond with the updated document
+      res.status(200).json(updatedDocument);
+  });
+  
 
 
 // Function to create a new document
