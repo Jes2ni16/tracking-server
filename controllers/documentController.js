@@ -84,25 +84,39 @@ const updateDocument = asyncHandler(async (req, res) => {
         throw new Error('Document not found');
     }
 
-    // Check if the user has permission to update the document
     if (req.user.role !== 'admin' && document.createdBy.toString() !== req.user.id) {
         res.status(403);
         throw new Error('User does not have permission to update this document');
     }
 
-    // Prepare status history update if the document's status is being changed
     let updateData = req.body;
+
     if (req.body.status && req.body.status !== document.status) {
-        updateData = {
-            ...req.body,
-            $push: {
-                statusHistory: {
-                    status: req.body.status,
-                    updatedBy: req.user.id, // Track who updated the status
-                    timestamp: new Date() // Add a timestamp
+        if (req.body.status === 'realasing') {
+            updateData = {
+                ...req.body,
+                releaseDate: new Date().toISOString().split('T')[0], // Set the release date to the current date (YYYY-MM-DD)
+                $push: {
+                    statusHistory: {
+                        status: req.body.status,
+                        updatedBy: req.user.id, // Track who updated the status
+                        timestamp: new Date() // Add a timestamp
+                    }
                 }
-            }
-        };
+            };
+        } else {
+            // Otherwise, update the status without setting a release date
+            updateData = {
+                ...req.body,
+                $push: {
+                    statusHistory: {
+                        status: req.body.status,
+                        updatedBy: req.user.id, // Track who updated the status
+                        timestamp: new Date() // Add a timestamp
+                    }
+                }
+            };
+        }
     }
 
     // Update the document in the database
@@ -112,9 +126,15 @@ const updateDocument = asyncHandler(async (req, res) => {
         { new: true, runValidators: true } // Return the updated document and run validation
     );
 
+    if (!updatedDocument) {
+        res.status(404);
+        throw new Error('Document not found');
+    }
+
     // Respond with the updated document
     res.status(200).json(updatedDocument);
 });
+
 
 // Function to create a new document
 const createDocument = async (req, res) => {

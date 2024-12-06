@@ -41,6 +41,7 @@ const documentSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
+    releaseDate: { type: Date, default: null }, 
     // Array to store file metadata (original name, MIME type, size, file path)
     files: [{ 
         originalName: String,
