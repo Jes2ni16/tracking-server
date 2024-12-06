@@ -106,7 +106,7 @@ const getNextMonday = () => {
       let updateData = req.body;
   
       if (req.body.status && req.body.status !== document.status) {
-          if (req.body.status === 'to be released') {
+          if (req.body.status === 'realasing') {
               const releaseDate = getNextMonday(); 
               updateData = {
                   ...req.body,
