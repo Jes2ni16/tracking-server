@@ -120,10 +120,10 @@ const updateDocument = asyncHandler(async (req, res) => {
 const createDocument = async (req, res) => {
     try {
         // Extract fields from the request body
-        const { filename, purpose,schoolName,  course, copies } = req.body;
+        const { filename, purpose,  course, copies } = req.body;
 
         // Check if all required fields are provided
-        if (!filename || !purpose || !schoolName  || !course ||  !copies) {
+        if (!filename || !purpose   || !course ||  !copies) {
             return res.status(400).json({ message: 'All required fields must be provided' });
         }
 
